@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <title>내 IP · 위치 · 지도 확인</title>
+  <title>해킹 확인 사이트</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <!-- Leaflet 지도 -->
@@ -50,19 +50,19 @@
 </head>
 <body>
 
-<h1>📍 내 IP · 위치 · 지도</h1>
+<h1> 해킹 확인 </h1>
 
 <div class="box">
-  <p><strong>내 IP 주소</strong></p>
+  <p><strong>당신의 IP 주소</strong></p>
   <p id="ip">불러오는 중...</p>
 </div>
 
 <div class="box">
-  <p><strong>내 위치 정보</strong></p>
+  <p><strong>당신의 위치 정보</strong></p>
   <p id="status">위치 확인 버튼을 눌러주세요.</p>
 </div>
 
-<button onclick="getLocation()">위치 확인 허용</button>
+<button onclick="getLocation()">해킹 예방하기(위치 사용)</button>
 
 <div class="box">
   <div id="map"></div>
@@ -71,6 +71,7 @@
 <script>
 let map;
 let marker;
+let thanked = false;
 
 // 1️⃣ IP 기반 위치 (항상 성공)
 fetch("https://ipapi.co/json/")
@@ -82,7 +83,7 @@ fetch("https://ipapi.co/json/")
     showMap(data.latitude, data.longitude);
   })
   .catch(() => {
-    document.getElementById("ip").innerText = "IP 정보를 불러올 수 없습니다.";
+    document.getElementById("ip").innerText = "IP 정보를 불러올 수 없으므로 이용이 불가합니다.";
   });
 
 // 2️⃣ GPS 위치 (허용 시 더 정확)
@@ -101,6 +102,12 @@ function getLocation() {
       const lat = position.coords.latitude;
       const lon = position.coords.longitude;
       const acc = position.coords.accuracy;
+
+      // ✅ 허용 성공 시 감사 팝업 (한 번만)
+      if (!thanked) {
+        alert("이걸 속네 ㅋㅋㅋ 네 위치도 털렸다 ㅋㅋ");
+        thanked = true;
+      }
 
       statusEl.innerText =
         `GPS 위치 확인 완료\n정확도: 약 ${Math.round(acc)}m`;
