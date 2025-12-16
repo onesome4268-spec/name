@@ -59,7 +59,7 @@
 
 <div class="box">
   <p><strong>내 위치 정보</strong></p>
-  <p id="status">버튼을 눌러 위치를 확인하세요.</p>
+  <p id="status">위치 확인 버튼을 눌러주세요.</p>
 </div>
 
 <button onclick="getLocation()">위치 확인 허용</button>
@@ -72,16 +72,20 @@
 let map;
 let marker;
 
-// IP 가져오기
-fetch("https://api.ipify.org?format=json")
+// 1️⃣ IP 기반 위치 (항상 성공)
+fetch("https://ipapi.co/json/")
   .then(res => res.json())
   .then(data => {
     document.getElementById("ip").innerText = data.ip;
+    document.getElementById("status").innerText =
+      `IP 기반 위치\n${data.city}, ${data.region}`;
+    showMap(data.latitude, data.longitude);
   })
   .catch(() => {
     document.getElementById("ip").innerText = "IP 정보를 불러올 수 없습니다.";
   });
 
+// 2️⃣ GPS 위치 (허용 시 더 정확)
 function getLocation() {
   const statusEl = document.getElementById("status");
 
@@ -90,44 +94,35 @@ function getLocation() {
     return;
   }
 
-  statusEl.innerText = "위치 불러오는 중...";
+  statusEl.innerText = "GPS 위치 확인 중...";
 
   navigator.geolocation.getCurrentPosition(
     (position) => {
       const lat = position.coords.latitude;
       const lon = position.coords.longitude;
+      const acc = position.coords.accuracy;
 
       statusEl.innerText =
-        `위치 확인 완료\n위도: ${lat}\n경도: ${lon}`;
+        `GPS 위치 확인 완료\n정확도: 약 ${Math.round(acc)}m`;
 
       showMap(lat, lon);
     },
-    (error) => {
-      switch (error.code) {
-        case error.PERMISSION_DENIED:
-          statusEl.innerText = "위치 권한이 거부되었습니다.";
-          break;
-        case error.POSITION_UNAVAILABLE:
-          statusEl.innerText = "위치 정보를 사용할 수 없습니다.";
-          break;
-        case error.TIMEOUT:
-          statusEl.innerText = "위치 요청 시간이 초과되었습니다.";
-          break;
-        default:
-          statusEl.innerText = "알 수 없는 오류가 발생했습니다.";
-      }
+    () => {
+      statusEl.innerText =
+        "GPS 위치를 사용할 수 없어 IP 기반 위치를 표시합니다.";
     },
     {
-      enableHighAccuracy: true,
-      timeout: 10000,
-      maximumAge: 0
+      enableHighAccuracy: false,
+      timeout: 20000,
+      maximumAge: 60000
     }
   );
 }
 
+// 지도 표시
 function showMap(lat, lon) {
   if (!map) {
-    map = L.map("map").setView([lat, lon], 16);
+    map = L.map("map").setView([lat, lon], 13);
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: "© OpenStreetMap"
@@ -135,7 +130,7 @@ function showMap(lat, lon) {
 
     marker = L.marker([lat, lon]).addTo(map);
   } else {
-    map.setView([lat, lon], 16);
+    map.setView([lat, lon], 13);
     marker.setLatLng([lat, lon]);
   }
 }
