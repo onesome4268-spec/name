@@ -2,118 +2,144 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <title>내 위치 확인</title>
+  <title>내 IP · 위치 · 지도 확인</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <!-- Leaflet 지도 -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <style>
     body {
-      margin: 0;
-      height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      background: #1c1c2b;
-      color: white;
       font-family: Arial, sans-serif;
-    }
-    .card {
-      width: 95%;
-      max-width: 420px;
-      background: rgba(255,255,255,0.1);
+      background: #f5f5f5;
+      margin: 0;
       padding: 20px;
-      border-radius: 15px;
+    }
+    h1 {
+      text-align: center;
+    }
+    .box {
+      background: white;
+      padding: 15px;
+      border-radius: 10px;
+      margin-bottom: 15px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
     #map {
-      height: 260px;
-      margin-top: 12px;
-      border-radius: 12px;
+      height: 300px;
+      border-radius: 10px;
     }
     button {
       width: 100%;
-      margin-top: 10px;
       padding: 12px;
+      font-size: 16px;
       border: none;
       border-radius: 8px;
-      background: #4cafef;
+      background: #007bff;
       color: white;
-      font-size: 1rem;
       cursor: pointer;
     }
-    .info {
-      font-size: 0.9rem;
-      opacity: 0.85;
-      margin-top: 6px;
+    button:active {
+      background: #0056b3;
     }
   </style>
 </head>
 <body>
-  <div class="card">
-    <h2>내 위치 확인</h2>
 
-    <div class="info">IP 기반 위치 (대략)</div>
-    <div id="ipinfo">불러오는 중...</div>
+<h1>📍 내 IP · 위치 · 지도</h1>
 
-    <div id="map"></div>
+<div class="box">
+  <p><strong>내 IP 주소</strong></p>
+  <p id="ip">불러오는 중...</p>
+</div>
 
-    <button onclick="requestLocation()">📍 위치 사용 허용</button>
-    <div class="info" id="status"></div>
-  </div>
+<div class="box">
+  <p><strong>내 위치 정보</strong></p>
+  <p id="status">버튼을 눌러 위치를 확인하세요.</p>
+</div>
 
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <script>
-    let map = L.map("map").setView([37.5665, 126.9780], 11);
-    let marker;
+<button onclick="getLocation()">위치 확인 허용</button>
 
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
+<div class="box">
+  <div id="map"></div>
+</div>
 
-    // 1️⃣ IP 기반 위치 (자동)
-    fetch("http://ip-api.com/json/?lang=ko")
-      .then(res => res.json())
-      .then(data => {
-        document.getElementById("ipinfo").textContent =
-          `${data.country} ${data.regionName} ${data.city}`;
+<script>
+let map;
+let marker;
 
-        marker = L.marker([data.lat, data.lon])
-          .addTo(map)
-          .bindPopup("IP 기반 위치 (대략)")
-          .openPopup();
+// IP 가져오기
+fetch("https://api.ipify.org?format=json")
+  .then(res => res.json())
+  .then(data => {
+    document.getElementById("ip").innerText = data.ip;
+  })
+  .catch(() => {
+    document.getElementById("ip").innerText = "IP 정보를 불러올 수 없습니다.";
+  });
 
-        map.setView([data.lat, data.lon], 11);
-      });
+function getLocation() {
+  const statusEl = document.getElementById("status");
 
-    // 2️⃣ 사용자 허용 후에만 실행
-    function requestLocation() {
-      const status = document.getElementById("status");
+  if (!navigator.geolocation) {
+    statusEl.innerText = "이 브라우저는 위치 기능을 지원하지 않습니다.";
+    return;
+  }
 
-      if (!navigator.geolocation) {
-        status.textContent = "이 브라우저는 위치 기능을 지원하지 않습니다.";
-        return;
+  statusEl.innerText = "위치 불러오는 중...";
+
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      const lat = position.coords.latitude;
+      const lon = position.coords.longitude;
+
+      statusEl.innerText =
+        `위치 확인 완료\n위도: ${lat}\n경도: ${lon}`;
+
+      showMap(lat, lon);
+    },
+    (error) => {
+      switch (error.code) {
+        case error.PERMISSION_DENIED:
+          statusEl.innerText = "위치 권한이 거부되었습니다.";
+          break;
+        case error.POSITION_UNAVAILABLE:
+          statusEl.innerText = "위치 정보를 사용할 수 없습니다.";
+          break;
+        case error.TIMEOUT:
+          statusEl.innerText = "위치 요청 시간이 초과되었습니다.";
+          break;
+        default:
+          statusEl.innerText = "알 수 없는 오류가 발생했습니다.";
       }
-
-      status.textContent = "위치 권한 요청 중...";
-
-      navigator.geolocation.getCurrentPosition(
-        pos => {
-          const lat = pos.coords.latitude;
-          const lon = pos.coords.longitude;
-
-          if (marker) map.removeLayer(marker);
-
-          marker = L.marker([lat, lon])
-            .addTo(map)
-            .bindPopup("📍 실제 내 위치")
-            .openPopup();
-
-          map.setView([lat, lon], 15);
-          status.textContent = "정확한 위치를 표시했습니다.";
-        },
-        () => {
-          status.textContent = "위치 권한이 거부되었습니다.";
-        }
-      );
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 0
     }
-  </script>
+  );
+}
+
+function showMap(lat, lon) {
+  if (!map) {
+    map = L.map("map").setView([lat, lon], 16);
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "© OpenStreetMap"
+    }).addTo(map);
+
+    marker = L.marker([lat, lon]).addTo(map);
+  } else {
+    map.setView([lat, lon], 16);
+    marker.setLatLng([lat, lon]);
+  }
+}
+</script>
+
 </body>
 </html>
